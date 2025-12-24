@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fruit Frenzy Slots</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Righteous&display=swap');
+
+        body {
+            font-family: 'Righteous', cursive;
+            background-color: #1a1a2e;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* Custom Slot Machine Styles */
+        .slot-machine {
+            background: linear-gradient(180deg, #f6d365 0%, #fda085 100%);
+            box-shadow: 
+                inset 0 0 20px rgba(0,0,0,0.5),
+                0 10px 30px rgba(0,0,0,0.5);
+            border: 8px solid #d4af37;
+        }
+
+        .reel-container {
+            background: #222;
+            border: 4px solid #444;
+            box-shadow: inset 0 0 15px #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .reel {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            height: 100%;
+            transition: transform 0.1s;
+        }
+
+        /* Animation for spinning blur */
+        .spinning .reel {
+            filter: blur(4px);
+            animation: bounce 0.1s infinite;
+        }
+
+        @keyframes bounce {
+            0% { transform: translateY(-2px); }
+            50% { transform: translateY(2px); }
+            100% { transform: translateY(-2px); }
+        }
+
+        .payline {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 0, 0, 0.5);
+            z-index: 10;
+            pointer-events: none;
+            box-shadow: 0 0 5px red;
+        }
+
+        .win-glow {
+            animation: winPulse 0.5s infinite alternate;
+            background-color: #ffd700 !important;
+            color: #000 !important;
+            border-color: #fff !important;
+        }
+
+        @keyframes winPulse {
+            from { box-shadow: 0 0 10px #ffd700; transform: scale(1); }
+            to { box-shadow: 0 0 30px #ff4500; transform: scale(1.1); }
+        }
+
+        .btn-3d {
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.1s;
+        }
+
+        .btn-3d:active {
+            transform: translateY(4px);
+        }
+
+        .btn-spin {
+            background: radial-gradient(circle, #ff4e50 0%, #f9d423 100%);
+            box-shadow: 0 6px 0 #b91c1c, 0 10px 10px rgba(0,0,0,0.3);
+        }
+
+        .btn-spin:active {
+            box-shadow: 0 2px 0 #b91c1c, 0 4px 4px rgba(0,0,0,0.3);
+        }
+
+        .lever {
+            width: 20px;
+            height: 120px;
+            background: #333;
+            position: absolute;
+            right: -40px;
+            top: 40px;
+            border-radius: 10px;
+            transform-origin: top center;
+            transition: transform 0.5s;
+            border: 2px solid #111;
+        }
+
+        .lever-ball {
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, #ff0000, #800000);
+            border-radius: 50%;
+            position: absolute;
+            bottom: -20px;
+            left: -10px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .lever-pull {
+            transform: rotate(-45deg);
+        }
+
+        /* Coin Animation */
+        .coin-rain {
+            position: absolute;
+            top: -50px;
+            font-size: 2rem;
+            animation: fall linear forwards;
+            z-index: 50;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(110vh) rotate(360deg); }
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex items-center justify-center bg-gray-900">
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900 bg-opacity-95 text-white p-6 text-center">
+        <h1 class="text-6xl mb-4 text-yellow-400 drop-shadow-lg">🎰 Fruit Frenzy</h1>
+        <p class="text-xl mb-8 text-gray-300">Match 3 symbols to win big!</p>
+        <div class="grid grid-cols-3 gap-4 mb-8 text-sm bg-gray-800 p-4 rounded-lg border border-gray-700">
+            <div>7️⃣ x3 = 50x</div>
+            <div>💎 x3 = 20x</div>
+            <div>🔔 x3 = 10x</div>
+            <div>🍇 x3 = 5x</div>
+            <div>🍋 x3 = 3x</div>
+            <div>🍒 x3 = 2x</div>
+        </div>
+        <button id="start-btn" class="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full text-2xl font-bold shadow-lg hover:scale-105 transition transform">
+            PLAY NOW
+        </button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-6 text-center">
+        <h1 class="text-5xl mb-4 text-red-500">OUT OF CREDITS</h1>
+        <p class="text-2xl mb-8">Better luck next time!</p>
+        <button id="restart-btn" class="px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full text-2xl font-bold shadow-lg hover:scale-105 transition transform">
+            TRY AGAIN
+        </button>
+    </div>
+
+    <!-- Main Game Container -->
+    <div class="relative w-full max-w-md p-4">
+        
+        <!-- Machine Body -->
+        <div class="slot-machine rounded-3xl p-6 relative">
+            
+            <!-- Header / Stats -->
+            <div class="flex justify-between items-center mb-6 bg-black bg-opacity-40 p-3 rounded-xl border border-white/20">
+                <div class="text-center">
+                    <div class="text-xs text-yellow-200 uppercase tracking-wider">Credits</div>
+                    <div id="credits-display" class="text-2xl text-white font-bold">100</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-xs text-yellow-200 uppercase tracking-wider">Bet</div>
+                    <div class="flex items-center gap-2 justify-center">
+                        <button id="bet-minus" class="w-6 h-6 bg-red-500 rounded-full text-white flex items-center justify-center font-bold hover:bg-red-600">-</button>
+                        <span id="bet-display" class="text-xl text-white font-bold w-8">10</span>
+                        <button id="bet-plus" class="w-6 h-6 bg-green-500 rounded-full text-white flex items-center justify-center font-bold hover:bg-green-600">+</button>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-xs text-yellow-200 uppercase tracking-wider">Win</div>
+                    <div id="win-display" class="text-2xl text-yellow-400 font-bold">0</div>
+                </div>
+            </div>
+
+            <!-- Reels Area -->
+            <div class="relative bg-black rounded-xl p-2 border-8 border-gray-800 shadow-inner">
+                <!-- Payline indicator -->
+                <div class="payline"></div>
+                
+                <div class="flex justify-between gap-2 h-40">
+                    <!-- Reel 1 -->
+                    <div class="reel-container flex-1 rounded bg-gray-800" id="reel-1">
+                        <div class="reel">❓</div>
+                    </div>
+                    <!-- Reel 2 -->
+                    <div class="reel-container flex-1 rounded bg-gray-800" id="reel-2">
+                        <div class="reel">❓</div>
+                    </div>
+                    <!-- Reel 3 -->
+                    <div class="reel-container flex-1 rounded bg-gray-800" id="reel-3">
+                        <div class="reel">❓</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Display -->
+            <div id="message-area" class="h-8 mt-4 text-center text-yellow-900 font-bold text-lg uppercase tracking-widest opacity-0 transition-opacity">
+                GOOD LUCK!
+            </div>
+
+            <!-- Controls -->
+            <div class="mt-6 flex justify-center items-center relative">
+                <button id="spin-btn" class="btn-3d btn-spin w-32 h-32 rounded-full text-white text-2xl font-bold border-b-4 border-red-900 focus:outline-none">
+                    SPIN
+                </button>
+                
+                <!-- Decorative Lever (Desktop only mostly, but fun visual) -->
+                <div id="lever-arm" class="lever hidden md:block">
+                    <div class="lever-ball"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer / Paytable Hint -->
+        <div class="mt-4 text-center text-gray-500 text-xs">
+            <p>7️⃣ Jackpot! | 💎 Big Win | 🔔 Bell | 🍇 Grape | 🍋 Lemon | 🍒 Cherry</p>
+        </div>
+    </div>
+
+    <!-- Audio Context Warning (Hidden) -->
+    <div id="audio-warning" class="hidden"></div>
+
+    <script>
+        /**
+         * Game Configuration & State
+         */
+        const SYMBOLS = [
+            { id: 'seven',   icon: '7️⃣', value: 50, weight: 1 },  // Rare
+            { id: 'diamond', icon: '💎', value: 20, weight: 3 },
+            { id: 'bell',    icon: '🔔', value: 10, weight: 5 },
+            { id: 'grape',   icon: '🍇', value: 5,  weight: 8 },
+            { id: 'lemon',   icon: '🍋', value: 3,  weight: 10 },
+            { id: 'cherry',  icon: '🍒', value: 2,  weight: 15 }  // Common
+        ];
+
+        // Create weighted pool for RNG
+        let symbolPool = [];
+        SYMBOLS.forEach(sym => {
+            for(let i=0; i<sym.weight; i++) {
+                symbolPool.push(sym);
+            }
+        });
+
+        const STATE = {
+            credits: 100,
+            bet: 10,
+            isSpinning: false,
+            reelResults: [null, null, null]
+        };
+
+        const AUDIO_CTX = new (window.AudioContext || window.webkitAudioContext)();
+
+        /**
+         * DOM Elements
+         */
+        const els = {
+            startScreen: document.getElementById('start-screen'),
+            gameOverScreen: document.getElementById('game-over-screen'),
+            credits: document.getElementById('credits-display'),
+            bet: document.getElementById('bet-display'),
+            win: document.getElementById('win-display'),
+            spinBtn: document.getElementById('spin-btn'),
+            startBtn: document.getElementById('start-btn'),
+            restartBtn: document.getElementById('restart-btn'),
+            betPlus: document.getElementById('bet-plus'),
+            betMinus: document.getElementById('bet-minus'),
+            reels: [
+                document.getElementById('reel-1'),
+                document.getElementById('reel-2'),
+                document.getElementById('reel-3')
+            ],
+            reelContents: [
+                document.querySelector('#reel-1 .reel'),
+                document.querySelector('#reel-2 .reel'),
+                document.querySelector('#reel-3 .reel')
+            ],
+            message: document.getElementById('message-area'),
+            lever: document.getElementById('lever-arm')
+        };
+
+        /**
+         * Sound Engine (Web Audio API)
+         */
+        const Sound = {
+            playTone: (freq, type, duration, vol = 0.1) => {
+                if (AUDIO_CTX.state === 'suspended') AUDIO_CTX.resume();
+                const osc = AUDIO_CTX.createOscillator();
+                const gain = AUDIO_CTX.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, AUDIO_CTX.currentTime);
+                gain.gain.setValueAtTime(vol, AUDIO_CTX.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, AUDIO_CTX.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(AUDIO_CTX.destination);
+                osc.start();
+                osc.stop(AUDIO_CTX.currentTime + duration);
+            },
+            playSpin: () => {
+                // Rapid clicking sound
+                Sound.playTone(200, 'square', 0.05, 0.05);
+            },
+            playStop: () => {
+                // Thud
+                Sound.playTone(100, 'triangle', 0.1, 0.2);
+            },
+            playWin: () => {
+                // Arpeggio
+                const now = AUDIO_CTX.currentTime;
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                    setTimeout(() => Sound.playTone(freq, 'sine', 0.3, 0.2), i * 100);
+                });
+            },
+            playLose: () => {
+                Sound.playTone(150, 'sawtooth', 0.4, 0.1);
+            },
+            playCoin: () => {
+                Sound.playTone(1200, 'sine', 0.1, 0.05);
+            }
+        };
+
+        /**
+         * Game Logic
+         */
+        function init() {
+            els.startBtn.addEventListener('click', () => {
+                Sound.playTone(440, 'sine', 0.1);
+                els.startScreen.classList.add('hidden');
+                // Resume Audio Context on user interaction
+                if (AUDIO_CTX.state === 'suspended') AUDIO_CTX.resume();
+            });
+
+            els.restartBtn.addEventListener('click', resetGame);
+
+            els.spinBtn.addEventListener('click', spin);
+            
+            els.betPlus.addEventListener('click', () => adjustBet(10));
+            els.betMinus.addEventListener('click', () => adjustBet(-10));
+
+            updateUI();
+        }
+
+        function resetGame() {
+            STATE.credits = 100;
+            STATE.bet = 10;
+            STATE.isSpinning = false;
+            els.gameOverScreen.classList.add('hidden');
+            updateUI();
+            els.reelContents.forEach(el => el.textContent = '❓');
+        }
+
+        function adjustBet(amount) {
+            if (STATE.isSpinning) return;
+            const newBet = STATE.bet + amount;
+            if (newBet >= 10 && newBet <= STATE.credits && newBet <= 100) {
+                STATE.bet = newBet;
+                updateUI();
+                Sound.playTone(400, 'sine', 0.05);
+            }
+        }
+
+        function getRandomSymbol() {
+            return symbolPool[Math.floor(Math.random() * symbolPool.length)];
+        }
+
+        function spin() {
+            if (STATE.isSpinning) return;
+            if (STATE.credits < STATE.bet) {
+                els.gameOverScreen.classList.remove('hidden');
+                return;
+            }
+
+            // Deduct Bet
+            STATE.credits -= STATE.bet;
+            STATE.isSpinning = true;
+            STATE.winAmount = 0; // Reset current win display
+            els.win.textContent = "0";
+            els.message.style.opacity = '0';
+            
+            // Remove previous win glows
+            els.reels.forEach(r => r.classList.remove('win-glow'));
+
+            updateUI();
+            
+            // Lever Animation
+            els.lever.classList.add('lever-pull');
+            setTimeout(() => els.lever.classList.remove('lever-pull'), 500);
+
+            // Determine Result beforehand (RNG)
+            STATE.reelResults = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
+
+            // Start Spinning Animation
+            const intervals = [];
+            
+            els.reels.forEach((reel, index) => {
+                reel.classList.add('spinning');
+                // Create rapid changing effect
+                const interval = setInterval(() => {
+                    reel.querySelector('.reel').textContent = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)].icon;
+                    if(index === 0) Sound.playSpin(); // Only play sound occasionally
+                }, 50 + (index * 10)); // Stagger speeds slightly
+                intervals.push(interval);
+            });
+
+            // Stop Reels One by One
+            // Reel 1 stops at 1000ms, Reel 2 at 1500ms, Reel 3 at 2000ms
+            STATE.reelResults.forEach((result, index) => {
+                const stopDelay = 1000 + (index * 600);
+                
+                setTimeout(() => {
+                    clearInterval(intervals[index]);
+                    els.reels[index].classList.remove('spinning');
+                    els.reelContents[index].textContent = result.icon;
+                    Sound.playStop();
+
+                    // If last reel, check win
+                    if (index === 2) {
+                        STATE.isSpinning = false;
+                        checkWin();
+                    }
+                }, stopDelay);
+            });
+        }
+
+        function checkWin() {
+            const r1 = STATE.reelResults[0];
+            const r2 = STATE.reelResults[1];
+            const r3 = STATE.reelResults[2];
+            
+            let winMultiplier = 0;
+            let message = "";
+            let isWin = false;
+
+            // Win Logic
+            if (r1.id === r2.id && r2.id === r3.id) {
+                // 3 of a kind
+                winMultiplier = r1.value;
+                message = "BIG WIN!";
+                isWin = true;
+                els.reels.forEach(r => r.classList.add('win-glow'));
+            } else if (r1.id === r2.id || r2.id === r3.id || r1.id === r3.id) {
+                // 2 of a kind (Small consolation)
+                // Find the matching symbol value, divide by 2 roughly or give fixed small amount
+                // Let's give 2x bet for any pair to keep it engaging
+                winMultiplier = 2; 
+                message = "NICE!";
+                isWin = true;
+                
+                // Highlight matching reels
+                if(r1.id === r2.id) {
+                    els.reels[0].classList.add('win-glow');
+                    els.reels[1].classList.add('win-glow');
+                } else if (r2.id === r3.id) {
+                    els.reels[1].classList.add('win-glow');
+                    els.reels[2].classList.add('win-glow');
+                } else {
+                    els.reels[0].classList.add('win-glow');
+                    els.reels[2].classList.add('win-glow');
+                }
+            }
+
+            if (isWin) {
+                const winAmount = STATE.bet * winMultiplier;
+                STATE.credits += winAmount;
+                els.win.textContent = winAmount;
+                els.message.textContent = message;
+                els.message.style.opacity = '1';
+                
+                Sound.playWin();
+                createCoinRain();
+            } else {
+                Sound.playLose();
+                els.message.textContent = "TRY AGAIN";
+                els.message.style.opacity = '1';
+            }
+
+            updateUI();
+            
+            // Check Game Over
+            if (STATE.credits < 10) {
+                setTimeout(() => {
+                    els.gameOverScreen.classList.remove('hidden');
+                }, 1500);
+            }
+        }
+
+        function updateUI() {
+            els.credits.textContent = STATE.credits;
+            els.bet.textContent = STATE.bet;
+            
+            // Disable buttons if spinning or low credits
+            els.spinBtn.disabled = STATE.isSpinning;
+            els.spinBtn.style.opacity = STATE.isSpinning ? 0.7 : 1;
+            
+            els.betPlus.disabled = STATE.isSpinning;
+            els.betMinus.disabled = STATE.isSpinning;
+        }
+
+        function createCoinRain() {
+            for(let i=0; i<20; i++) {
+                const coin = document.createElement('div');
+                coin.classList.add('coin-rain');
+                coin.textContent = '🪙';
+                coin.style.left = Math.random() * 100 + 'vw';
+                coin.style.animationDuration = (Math.random() * 2 + 1) + 's';
+                document.body.appendChild(coin);
+                Sound.playCoin();
+                
+                setTimeout(() => {
+                    coin.remove();
+                }, 3000);
+            }
+        }
+
+        // Initialize
+        init();
+
+    </script>
+</body>
+</html>
